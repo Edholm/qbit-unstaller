@@ -10,10 +10,14 @@ import (
 	"time"
 )
 
+var (
+	settings api.Settings
+	client   http.Client
+)
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
-	var settings api.Settings
 	flag.StringVar(&settings.Url, "url", "https://luna.lan.elee.cloud/qbittorrent", "The full url including protocol and port to qBittorrent")
 	flag.StringVar(&settings.User, "user", "admin", "Username to qBittorrent webui")
 	flag.StringVar(&settings.Pass, "password", "adminadmin", "Password for the -user")
@@ -27,38 +31,38 @@ func main() {
 		"\tInterval: %s\n",
 		settings.Url, settings.User, settings.Interval)
 
-	client := setupClient()
+	client = setupClient()
 
-	printVersion(&client, &settings)
-	startUnstallerLoop(&client, &settings)
+	printVersion()
+	startUnstallerLoop()
 }
 
-func startUnstallerLoop(client *http.Client, s *api.Settings) {
-	log.Printf("Starting unstaller loop with interval %s", s.Interval)
-	for range time.Tick(s.Interval) {
-		reannounceStalledDownloads(client, s)
+func startUnstallerLoop() {
+	log.Printf("Starting unstaller loop with interval %s", settings.Interval)
+	for range time.Tick(settings.Interval) {
+		reannounceStalledDownloads()
 	}
 }
 
-func reannounceStalledDownloads(client *http.Client, settings *api.Settings) {
-	downloads, err := qbit.GetStalledDownloads(client, settings)
+func reannounceStalledDownloads() {
+	downloads, err := qbit.GetStalledDownloads(&client, &settings)
 	if err != nil {
 		log.Panic(err)
 	}
 
 	var hashes []string
 	for _, info := range downloads {
-		if hasNonWorkingTracker(client, settings, info) {
+		if hasNonWorkingTracker(info) {
 			hashes = append(hashes, info.Hash)
 		}
 	}
 	if len(hashes) > 0 {
-		qbit.ForceReannounce(client, settings, &hashes)
+		qbit.ForceReannounce(&client, &settings, &hashes)
 	}
 }
 
-func hasNonWorkingTracker(client *http.Client, settings *api.Settings, info api.TorrentInfo) bool {
-	trackerInfo, err := qbit.GetTrackerInfo(client, settings, &info)
+func hasNonWorkingTracker(info api.TorrentInfo) bool {
+	trackerInfo, err := qbit.GetTrackerInfo(&client, &settings, &info)
 	if err != nil {
 		log.Printf("ERROR - %s", err)
 		return false
@@ -72,8 +76,8 @@ func hasNonWorkingTracker(client *http.Client, settings *api.Settings, info api.
 	return false
 }
 
-func printVersion(client *http.Client, settings *api.Settings) {
-	version, err := qbit.GetVersion(client, settings)
+func printVersion() {
+	version, err := qbit.GetVersion(&client, &settings)
 	if err != nil {
 		log.Fatal(err)
 	}
