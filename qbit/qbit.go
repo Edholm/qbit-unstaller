@@ -4,12 +4,20 @@ import (
 	"edholm.dev/qbit-unstaller/api"
 	"encoding/json"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
 )
+
+var reannouncesMade = promauto.NewCounter(
+	prometheus.CounterOpts{
+		Name: "qbit_unstaller_reannounces_made",
+		Help: "The number of forced reannounces made to stalled torrents",
+	})
 
 type LoginError struct {
 	Cause string
@@ -141,6 +149,7 @@ func ForceReannounce(c *http.Client, s *api.Settings, hashes *[]string) {
 	}
 	defer resp.Body.Close()
 
+	reannouncesMade.Inc()
 	log.Printf("Successfully reannounced %v", hashes)
 }
 
