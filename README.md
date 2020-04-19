@@ -6,8 +6,12 @@ do a another announce until next interval (default 30 min) and thus you've "lost
 
 This simple program will find stalled torrents and force a tracker re-announce as a workaround
 
-## Affects versions
-The "bug" in qBittorrent exists in all versions at least up to `4.2.3`
+## How to use
+````shell script
+go get -v -t -d ./...
+go build
+./qbit-unstaller -help
+````
 
 ## Metrics
 Metrics are exposed under `:2112/metrics`
@@ -23,5 +27,8 @@ Metrics are exposed under `:2112/metrics`
         replacement: my-domain.example.com:2112
 ```
 
+## Affects versions
+The "bug" in qBittorrent exists in all versions at least up to `4.2.3`
+
 ## See also
-[Bug report](https://github.com/qbittorrent/qBittorrent/issues/11320)
+[Bug report @ qBittorrent](https://github.com/qbittorrent/qBittorrent/issues/11320)
