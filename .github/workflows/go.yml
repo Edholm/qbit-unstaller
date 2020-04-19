@@ -2,9 +2,10 @@ name: Go
 
 on:
   push:
-    branches: [ master ]
+    paths-ignore:
+      - 'README.md'
   pull_request:
-    branches: [ master ]
+    branches: '**'
 
 jobs:
 
