@@ -3,8 +3,8 @@ name: Go
 on:
   push:
     paths-ignore:
-      - 'README.md'
-      - '.gitignore'
+      - '**/README.md'
+      - '**/.gitignore'
       - '.github/workflows/release.yml'
   pull_request:
     branches: '**'
