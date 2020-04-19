@@ -5,6 +5,7 @@ on:
     paths-ignore:
       - 'README.md'
       - '.gitignore'
+      - '.github/workflows/release.yml'
   pull_request:
     branches: '**'
 jobs:
