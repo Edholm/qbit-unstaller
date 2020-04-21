@@ -1,22 +1,18 @@
 package main
 
 import (
-	"edholm.dev/qbit-unstaller/api"
-	"edholm.dev/qbit-unstaller/qbit"
-	"flag"
+	"edholm.dev/qbit-service"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	flag "github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"log"
 	"net/http"
-	"net/http/cookiejar"
 	"time"
 )
 
 var (
-	settings api.Settings
-	client   http.Client
-
 	loopsMade = promauto.NewCounter(
 		prometheus.CounterOpts{
 			Name: "qbit_unstaller_loops_made",
@@ -41,41 +37,44 @@ var (
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
-	flag.StringVar(&settings.Url, "url", "https://luna.lan.elee.cloud/qbittorrent", "The full url including protocol and port to qBittorrent")
-	flag.StringVar(&settings.User, "user", "admin", "Username to qBittorrent webui")
-	flag.StringVar(&settings.Pass, "password", "adminadmin", "Password for the -user")
-	flag.DurationVar(&settings.Interval, "interval", 10000*time.Millisecond, "The duration between checking for stalled torrents")
+	flag.String("url", "https://luna.lan.elee.cloud/qbittorrent", "The full url including protocol and port to qBittorrent")
+	flag.String("username", "admin", "Username to qBittorrent webui")
+	flag.String("password", "adminadmin", "Password for the -user")
+	flag.Duration("interval", 10000*time.Millisecond, "The duration between checking for stalled torrents")
 	flag.Parse()
+	err := viper.BindPFlags(flag.CommandLine)
+	if err != nil {
+		log.Panic(err)
+	}
 
 	log.Printf("Using the following settings:\n"+
 		"\tUrl: %s\n"+
 		"\tUser: %s\n"+
 		"\tPass: <redacted>\n"+
 		"\tInterval: %s\n",
-		settings.Url, settings.User, settings.Interval)
-
-	client = setupClient()
+		viper.GetString("url"), viper.GetString("username"), viper.GetString("interval"))
 
 	printVersion()
 	go startUnstallerLoop()
 
 	http.Handle("/metrics", promhttp.Handler())
-	err := http.ListenAndServe(":2112", nil)
+	err = http.ListenAndServe(":2112", nil)
 	if err != nil {
 		log.Panic(err)
 	}
 }
 
 func startUnstallerLoop() {
-	log.Printf("Starting unstaller loop with interval %s", settings.Interval)
-	for range time.Tick(settings.Interval) {
+	interval := viper.GetDuration("interval")
+	log.Printf("Starting unstaller loop with interval %s", interval)
+	for range time.Tick(interval) {
 		loopsMade.Inc()
 		reannounceStalledDownloads()
 	}
 }
 
 func reannounceStalledDownloads() {
-	downloads, err := qbit.GetStalledDownloads(&client, &settings)
+	downloads, err := qbit.GetStalledDownloads()
 	if err != nil {
 		log.Panic(err)
 	}
@@ -90,12 +89,12 @@ func reannounceStalledDownloads() {
 		}
 	}
 	if len(hashes) > 0 {
-		qbit.ForceReannounce(&client, &settings, &hashes)
+		qbit.ForceReannounce(&hashes)
 	}
 }
 
-func hasNonWorkingTracker(info api.TorrentInfo) bool {
-	trackerInfo, err := qbit.GetTrackerInfo(&client, &settings, &info)
+func hasNonWorkingTracker(info qbit.TorrentInfo) bool {
+	trackerInfo, err := qbit.GetTrackerInfo(&info)
 	if err != nil {
 		log.Printf("ERROR - %s", err)
 		return false
@@ -104,7 +103,7 @@ func hasNonWorkingTracker(info api.TorrentInfo) bool {
 	var nonWorking = false
 	for _, t := range trackerInfo {
 		trackerStatus.WithLabelValues(string(t.Status)).Inc()
-		if t.Status != api.TrackerWorking && t.Status != api.TrackerDisabled {
+		if t.Status != qbit.TrackerWorking && t.Status != qbit.TrackerDisabled {
 			log.Printf("\t%s - %s has a non-working tracker", info.Name, info.Hash)
 			nonWorking = true
 		}
@@ -113,23 +112,10 @@ func hasNonWorkingTracker(info api.TorrentInfo) bool {
 }
 
 func printVersion() {
-	version, err := qbit.GetVersion(&client, &settings)
+	version, err := qbit.GetVersion()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Printf("qBittorrent %v", string(version))
-}
-
-func setupClient() http.Client {
-	jar, err := cookiejar.New(nil)
-	if err != nil {
-		log.Panic(err)
-	}
-
-	var client = http.Client{
-		Timeout: 1 * time.Second,
-		Jar:     jar,
-	}
-	return client
 }
