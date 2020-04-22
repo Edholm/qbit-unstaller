@@ -37,10 +37,10 @@ var (
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
-	flag.String("url", "https://luna.lan.elee.cloud/qbittorrent", "The full url including protocol and port to qBittorrent")
-	flag.String("username", "admin", "Username to qBittorrent webui")
-	flag.String("password", "adminadmin", "Password for the -user")
-	flag.Duration("interval", 10000*time.Millisecond, "The duration between checking for stalled torrents")
+	flag.StringP("url", "h", "https://luna.lan.elee.cloud/qbittorrent", "The full url including protocol and port to qBittorrent")
+	flag.StringP("username", "u", "admin", "Username to qBittorrent webui")
+	flag.StringP("password", "p", "adminadmin", "Password for the -user")
+	flag.DurationP("interval", "i", 10000*time.Millisecond, "The duration between checking for stalled torrents")
 	flag.Parse()
 	err := viper.BindPFlags(flag.CommandLine)
 	if err != nil {
