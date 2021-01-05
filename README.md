@@ -15,7 +15,7 @@ go build
 ### Docker
 ````shell script
 docker login docker.pkg.github.com -u <github-username>
-docker run --restart always -d -p 2112:2112 --name qbit-unstaller docker.pkg.github.com/edholm/qbit-unstaller/qbit-unstaller:v1.1.0
+docker run --restart always -d -p 2112:2112 --name qbit-unstaller docker.pkg.github.com/edholm/qbit-unstaller/qbit-unstaller:v1.1.2
 ````
 
 ## Metrics
